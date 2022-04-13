@@ -1,0 +1,157 @@
+<ROSETTASCRIPTS>
+
+	<SCOREFXNS>
+		<ScoreFunction name="ref2015_full" weights="ref2015">				
+			<Reweight scoretype="coordinate_constraint" weight="0.6"/>
+			<Reweight scoretype="res_type_constraint" weight="0.4"/>
+		</ScoreFunction>
+		
+		<ScoreFunction name="ref2015_soft_full" weights="ref2015_soft">
+			<Reweight scoretype="coordinate_constraint" weight="0.6"/>
+			<Reweight scoretype="res_type_constraint" weight="0.4"/>
+		</ScoreFunction>
+
+		<ScoreFunction name="ref2015_no_pssm" weights="ref2015"> 
+			<Reweight scoretype="coordinate_constraint" weight="0.6"/>
+		</ScoreFunction>
+
+	 	<ScoreFunction name="ref2015_pure" weights="ref2015"/> 
+			
+	</SCOREFXNS>	
+
+        <TASKOPERATIONS>
+                //detects residues between building blocks
+                <BuildingBlockInterface name="design_bbi_1comp" multicomp="0" sym_dof_names="%%symdof1%%" nsub_bblock="%%nsub_bb%%" fa_rep_cut="3.0" contact_dist="10" bblock_dist="5" />
+                <BuildingBlockInterface name="design_bbi_2comp" multicomp="1" sym_dof_names="%%symdof1%%,%%symdof2%%" fa_rep_cut="3.0" contact_dist="10" bblock_dist="5" />
+                //selects surface and boundary residues of BUILDING BLOCK
+                <SelectBySASA name="bb_surf" mode="sc" state="monomer" core_asa="0" surface_asa="0" core="0" boundary="1" surface="1" verbose="0" />
+                //MAKE SURE invert=0, detects if any residues are not the same as native input
+                <RestrictNativeResidues name="nonnative" prevent_repacking="1" invert="0" />
+        </TASKOPERATIONS>
+
+        <RESIDUE_SELECTORS>
+                //selects CPG residues (don't design these away)
+                <ResidueName name="CPG" residue_name3="CYS,PRO,GLY" />
+                        <Not name="not_CPG" selector="CPG" />
+
+                //import legacy interface detection code
+                <Task name="design_bbi_selector" designable="true" task_operations="design_bbi_%%comp%%" />
+                <Task name="bb_surf_selector" designable="true" task_operations="bb_surf" />
+                        <And name="design_int_no_nonnative" selectors="design_bbi_selector,bb_surf_selector,not_CPG" />
+                <Task name="nonnative_selector" designable="true" task_operations="nonnative" />
+
+                //set design_resis
+                <Or name="design_resis" selectors="design_int_no_nonnative,nonnative_selector" /> //selects full interface, including preserved residues
+                <Neighborhood name="pack_resis" selector="design_resis" distance="5" include_focus_in_subset="false" />
+                <Or name="design_and_pack_resis" selectors="design_resis,pack_resis" />
+		<Not name="lock_resis" selector="design_and_pack_resis" />
+	</RESIDUE_SELECTORS>
+
+	<TASKOPERATIONS>
+		<IncludeCurrent name="ic" />                                                                                    //includes input pdb's rotamers
+                <LimitAromaChi2 name="limitaro" chi2max="110" chi2min="70" />                   //disallow extreme aromatic rotamers
+                <ExtraRotamersGeneric name="ex1_ex2" ex1="1" ex2="0" ex2aro="1" />              //use ex1 ex2 rotamers
+
+		<OperateOnResidueSubset name="pack_task" selector="design_and_pack_resis" >
+                        <RestrictToRepackingRLT/> </OperateOnResidueSubset>
+                <OperateOnResidueSubset name="lock_task" selector="lock_resis" >
+			<PreventRepackingRLT/> </OperateOnResidueSubset>
+
+	</TASKOPERATIONS>
+
+	<MOVERS>
+                //regen sym and sample without a/r; 1-component
+                <SymDofMover name="gen_docked_config_no_transforms_1comp_mover" symm_file="%%sym%%" sym_dof_names="%%symdof1%%"
+                        flip_input_about_axes="%%flip_axes%%" />
+                <SymDofMover name="sample_docked_config_1comp" symm_file="%%sym%%" sym_dof_names="%%symdof1%%"
+                        angles="0"
+                        angle_deltas="1" 
+                        rotation_axes="x"
+                        radial_disps="0"
+                        radial_disp_deltas="0.5"
+                        translation_axes="x"
+                        sampling_mode="gaussian" auto_range="1"
+			set_sampler="0" />
+
+		//regen sym and sample without a/r; 2-component
+                <SymDofMover name="gen_docked_config_no_transforms_2comp_mover" symm_file="%%sym%%" sym_dof_names="%%symdof1%%,%%symdof2%%"
+                        flip_input_about_axes="%%flip_axes%%" />
+                <SymDofMover name="sample_docked_config_2comp" symm_file="%%sym%%" sym_dof_names="%%symdof1%%,%%symdof2%%"
+                        angles="0,0"
+                        angle_deltas="1,1" 
+                        rotation_axes="x,x"
+                        radial_disps="0,0"
+                        radial_disp_deltas="0.5,0.5"
+                        translation_axes="x,x"
+                        sampling_mode="gaussian" auto_range="1"
+                        set_sampler="0" />
+
+                <ParsedProtocol name="gen_docked_config_no_transforms_%%comp%%" >
+                        <Add mover_name="gen_docked_config_no_transforms_%%comp%%_mover" />
+                </ParsedProtocol>
+
+		<AddResidueLabel name="label_design_resis" residue_selector="design_resis" label="design_resis" />
+
+		<PackRotamersMover name="soft_repack" scorefxn="ref2015_soft_full" task_operations="pack_task,lock_task,ic,limitaro,ex1_ex2"/>
+        	<PackRotamersMover name="hard_repack" scorefxn="ref2015_full" task_operations="pack_task,lock_task,ic,limitaro,ex1_ex2"/>
+        	<RotamerTrialsMinMover name="RTmin" scorefxn="ref2015_full" task_operations="pack_task,lock_task,ic,limitaro,ex1_ex2"/> 
+        	<MinMover name="soft_min" scorefxn="ref2015_soft_full" chi="1" bb="1" jump="0"/>
+        	<MinMover name="hard_min" scorefxn="ref2015_full" chi="1" bb="1" jump="0"/>
+        	<AddConstraintsToCurrentConformationMover name="add_CA_cst"/>	
+		<Prepack name="prepack" jump_number="0" scorefxn="ref2015_no_pssm"/>
+
+        	<ParsedProtocol name="refinement_block"> #10 movers
+			<Add mover_name="soft_repack"/>
+			<Add mover_name="soft_min"/> 
+			<Add mover_name="soft_repack"/>
+			<Add mover_name="hard_min"/> 
+			<Add mover_name="hard_repack"/>
+			<Add mover_name="hard_min"/>
+              		<Add mover_name="hard_repack"/>
+                	<Add mover_name="RTmin"/>
+                	<Add mover_name="RTmin"/>
+                	<Add mover_name="hard_min"/> 
+		</ParsedProtocol>
+ 
+		<LoopOver name="iter4" mover_name="refinement_block" iterations="4"/> #16 repack+min iterations total
+
+		<ExtractAsymmetricUnit name="extract_asu" keep_virtual="0"/>
+
+	</MOVERS>
+
+	<FILTERS>
+		//cage regeneration terms
+                <GetRBDOFValues name="%%symdof1%%_1_disp"  sym_dof_name="%%symdof1%%" get_disp="1"  get_init_value="1" />
+                <GetRBDOFValues name="%%symdof1%%_1_angle" sym_dof_name="%%symdof1%%" get_angle="1" get_init_value="1" />
+                <GetRBDOFValues name="%%symdof2%%_2_disp"  sym_dof_name="%%symdof2%%" get_disp="1"  get_init_value="1" />
+                <GetRBDOFValues name="%%symdof2%%_2_angle" sym_dof_name="%%symdof2%%" get_angle="1" get_init_value="1" />
+
+		<ScoreType name="stability_score_full" scorefxn="ref2015_full" score_type="total_score" confidence="0" threshold="0"/>
+        	<ScoreType name="stability_without_pssm" scorefxn="ref2015_no_pssm" score_type="total_score" confidence="0" threshold="0"/>
+	       	<ScoreType name="stability_pure" scorefxn="ref2015_pure" score_type="total_score" confidence="0" threshold="0"/>		
+		<Rmsd name="rmsd" symmetry="1" confidence="0"/>
+		<MoveBeforeFilter name="rmsd_asu" mover="extract_asu" filter="rmsd" confidence="0" />
+		
+		<Time name="timer"/>
+
+	</FILTERS>
+
+	<PROTOCOLS>
+                //generate docked configuration
+		<Add mover_name="gen_docked_config_%%use_transforms%%_%%comp%%" />
+
+		<Add mover_name="label_design_resis"/>
+		
+		<Add filter_name="timer"/>
+		Add mover_name="add_CA_cst"/>
+		<Add mover_name="prepack"/>
+        	<Add mover_name="iter4"/>
+        	<Add filter_name="stability_score_full"/>
+        	<Add filter_name="stability_without_pssm"/>
+        	<Add filter_name="stability_pure"/>
+        	<Add filter_name="rmsd"/>
+		Add filter_name="rmsd_asu"/>
+		<Add filter_name="timer"/>
+	</PROTOCOLS>
+
+</ROSETTASCRIPTS>

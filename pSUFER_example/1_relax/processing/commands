@@ -1,0 +1,2 @@
+for i in {1..100}; do echo "./sh/relax.sh I3_1.pdb $i"; done > tasks
+awk '/design_resis/ {print $3}' output/I3_1/I3_1_0_0001.pdb > ../../2_filterscan/positions.list
