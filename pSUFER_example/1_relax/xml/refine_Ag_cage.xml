@@ -1,21 +1,21 @@
 <ROSETTASCRIPTS>
 
 	<SCOREFXNS>
-		<ScoreFunction name="ref2015_full" weights="ref2015">				
+		<ScoreFunction name="beta_full" weights="beta">				
 			<Reweight scoretype="coordinate_constraint" weight="0.6"/>
 			<Reweight scoretype="res_type_constraint" weight="0.4"/>
 		</ScoreFunction>
 		
-		<ScoreFunction name="ref2015_soft_full" weights="ref2015_soft">
+		<ScoreFunction name="beta_soft_full" weights="beta_soft">
 			<Reweight scoretype="coordinate_constraint" weight="0.6"/>
 			<Reweight scoretype="res_type_constraint" weight="0.4"/>
 		</ScoreFunction>
 
-		<ScoreFunction name="ref2015_no_pssm" weights="ref2015"> 
+		<ScoreFunction name="beta_no_pssm" weights="beta"> 
 			<Reweight scoretype="coordinate_constraint" weight="0.6"/>
 		</ScoreFunction>
 
-	 	<ScoreFunction name="ref2015_pure" weights="ref2015"/> 
+	 	<ScoreFunction name="beta_pure" weights="beta"/> 
 			
 	</SCOREFXNS>	
 
@@ -48,11 +48,7 @@
 	</RESIDUE_SELECTORS>
 
 	<TASKOPERATIONS>
-		<IncludeCurrent name="ic" />                                                                                    //includes input pdb's rotamers
-                <LimitAromaChi2 name="limitaro" chi2max="110" chi2min="70" />                   //disallow extreme aromatic rotamers
-                <ExtraRotamersGeneric name="ex1_ex2" ex1="1" ex2="0" ex2aro="1" />              //use ex1 ex2 rotamers
-
-		<OperateOnResidueSubset name="pack_task" selector="design_and_pack_resis" >
+                <OperateOnResidueSubset name="pack_task" selector="design_and_pack_resis" >
                         <RestrictToRepackingRLT/> </OperateOnResidueSubset>
                 <OperateOnResidueSubset name="lock_task" selector="lock_resis" >
 			<PreventRepackingRLT/> </OperateOnResidueSubset>
@@ -92,13 +88,13 @@
 
 		<AddResidueLabel name="label_design_resis" residue_selector="design_resis" label="design_resis" />
 
-		<PackRotamersMover name="soft_repack" scorefxn="ref2015_soft_full" task_operations="pack_task,lock_task,ic,limitaro,ex1_ex2"/>
-        	<PackRotamersMover name="hard_repack" scorefxn="ref2015_full" task_operations="pack_task,lock_task,ic,limitaro,ex1_ex2"/>
-        	<RotamerTrialsMinMover name="RTmin" scorefxn="ref2015_full" task_operations="pack_task,lock_task,ic,limitaro,ex1_ex2"/> 
-        	<MinMover name="soft_min" scorefxn="ref2015_soft_full" chi="1" bb="1" jump="0"/>
-        	<MinMover name="hard_min" scorefxn="ref2015_full" chi="1" bb="1" jump="0"/>
+		<PackRotamersMover name="soft_repack" scorefxn="beta_soft_full" task_operations="pack_task,lock_task"/>
+        	<PackRotamersMover name="hard_repack" scorefxn="beta_full" task_operations="pack_task,lock_task"/>
+        	<RotamerTrialsMinMover name="RTmin" scorefxn="beta_full" task_operations="pack_task,lock_task"/> 
+        	<MinMover name="soft_min" scorefxn="beta_soft_full" chi="1" bb="1" jump="0"/>
+        	<MinMover name="hard_min" scorefxn="beta_full" chi="1" bb="1" jump="0"/>
         	<AddConstraintsToCurrentConformationMover name="add_CA_cst"/>	
-		<Prepack name="prepack" jump_number="0" scorefxn="ref2015_no_pssm"/>
+		<Prepack name="prepack" jump_number="0" scorefxn="beta_no_pssm"/>
 
         	<ParsedProtocol name="refinement_block"> #10 movers
 			<Add mover_name="soft_repack"/>
@@ -126,10 +122,10 @@
                 <GetRBDOFValues name="%%symdof2%%_2_disp"  sym_dof_name="%%symdof2%%" get_disp="1"  get_init_value="1" />
                 <GetRBDOFValues name="%%symdof2%%_2_angle" sym_dof_name="%%symdof2%%" get_angle="1" get_init_value="1" />
 
-		<ScoreType name="stability_score_full" scorefxn="ref2015_full" score_type="total_score" confidence="0" threshold="0"/>
-        	<ScoreType name="stability_without_pssm" scorefxn="ref2015_no_pssm" score_type="total_score" confidence="0" threshold="0"/>
-	       	<ScoreType name="stability_pure" scorefxn="ref2015_pure" score_type="total_score" confidence="0" threshold="0"/>		
-		<Rmsd name="rmsd" symmetry="1" confidence="0"/>
+		<ScoreType name="stability_score_full" scorefxn="beta_full" score_type="total_score" confidence="0" threshold="0"/>
+        	<ScoreType name="stability_without_pssm" scorefxn="beta_no_pssm" score_type="total_score" confidence="0" threshold="0"/>
+	       	<ScoreType name="stability_pure" scorefxn="beta_pure" score_type="total_score" confidence="0" threshold="0"/>		
+		<Rmsd name="rmsd" confidence="0"/>
 		<MoveBeforeFilter name="rmsd_asu" mover="extract_asu" filter="rmsd" confidence="0" />
 		
 		<Time name="timer"/>
@@ -143,14 +139,13 @@
 		<Add mover_name="label_design_resis"/>
 		
 		<Add filter_name="timer"/>
-		Add mover_name="add_CA_cst"/>
+		<Add mover_name="add_CA_cst"/>
 		<Add mover_name="prepack"/>
         	<Add mover_name="iter4"/>
         	<Add filter_name="stability_score_full"/>
         	<Add filter_name="stability_without_pssm"/>
         	<Add filter_name="stability_pure"/>
-        	<Add filter_name="rmsd"/>
-		Add filter_name="rmsd_asu"/>
+        	<Add filter_name="rmsd_asu"/>
 		<Add filter_name="timer"/>
 	</PROTOCOLS>
 

@@ -3,6 +3,7 @@ input="${1}"; index="${2}"
 
 #define run settings
 exe_path="/software/rosetta/latest/bin/rosetta_scripts -database /software/rosetta/latest/main/database/"
+fragment_store="indexed_structure_store:fragment_store /home/bcov/sc/scaffold_comparison/data/ss_grouped_vall_all.h5"
 
 #dump asu?
 dump_asu="true"
@@ -30,7 +31,7 @@ a2="0"
 r1="0"
 r2="0"
 
-file_input="${in_name}.pdb"
+file_input=${input}
 use_transforms="no_transforms"
 
 #make folders
@@ -38,10 +39,18 @@ mkdir -p output/${in_name}
 outpath="output/${in_name}"
 	
 #symmmetry
-nsub_bb=${axis1}
-symfile="symdef/I3.sym"
-symdof1="JCT00"
-symdof2="${symdof1}"
+if [[ ${num_comp} == "1" ]]; then
+	nsub_bb=${axis1}
+	symfile="../symdef/${arche}/${sym}.sym"
+	elif [[ ${sym} == "I3" ]]; then symdof1="JCT00"
+	else echo "undefined sym ?????"; exit ; fi
+	symdof2="${symdof1}"
+elif [[ ${num_comp} == "2" ]]; then
+	nsub_bb="1"
+	symfile="../symdef/${arche}/${sym}.sym"
+	elif [[ ${sym} == "I53" ]]; then symdof1="JCP00"; symdof2="JCT00"
+	else echo "undefined sym ?????"; exit ; fi
+fi
 
 #check reverse
 flip_axes="0,0"
@@ -55,6 +64,8 @@ fi
 #run Rosetta
 if [[ ! -e ${outpath}/score_${index}.sc ]]; then
 	${exe_path} \
+		-${fragment_store} \
+		-beta \
 		-out::file::pdb_comments \
 		-parser:protocol xml/refine_Ag_cage.xml \
 		-s      ${file_input} \

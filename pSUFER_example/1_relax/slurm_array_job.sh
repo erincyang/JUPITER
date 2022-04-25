@@ -4,8 +4,8 @@
 #SBATCH --mem=10G
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -o digs.log
-#SBATCH -e digs.log
+#SBATCH -o slurm.log
+#SBATCH -e slurm.log
 
 echo "Hello from job $SLURM_JOB_ID on $(hostname) at $(date)"
 CMD=$(head -n $SLURM_ARRAY_TASK_ID tasks | tail -1)

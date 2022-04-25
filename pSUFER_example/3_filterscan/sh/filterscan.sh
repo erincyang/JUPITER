@@ -42,11 +42,18 @@ mkdir -p ${outpath}/resfiles
 mkdir -p ${outpath}/files
 
 #symmmetry
-${num_comp} == "1"
-nsub_bb=${axis1}
-symfile="../1_relax/symdef/${sym}.sym"
-symdof1="JCT00"
-symdof2="${symdof1}"
+if [[ ${num_comp} == "1" ]]; then
+	nsub_bb=${axis1}
+	symfile="../symdef/${arche}/${sym}.sym"
+	elif [[ ${sym} == "I3" ]]; then symdof1="JCT00"
+	else echo "undefined sym ?????"; exit ; fi
+	symdof2="${symdof1}"
+elif [[ ${num_comp} == "2" ]]; then
+	nsub_bb="1"
+	symfile="../symdef/${arche}/${sym}.sym"
+	elif [[ ${sym} == "I53" ]]; then symdof1="JCP00"; symdof2="JCT00"
+	else echo "undefined sym ?????"; exit ; fi
+fi
 
 #check reverse
 flip_axes="0,0"
@@ -61,8 +68,9 @@ fi
 ${exe_path} \
 	-out::file::pdb_comments \
 	-parser:protocol xml/filterscan_cage.xml \
-	-s      ${file_input} \
-	-native ${file_input} \
+	-s      input/scaffolds/${input} \
+	-native input/scaffolds/${input} \
+	-beta \
 	-use_occurrence_data \
 	-use_input_sc \
 	-extrachi_cutoff 10 \
