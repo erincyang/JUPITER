@@ -30,3 +30,6 @@ To execute filterscan and analyze results:
 9. in 3_filterscan/, Run 06_parse_score_file.ipynb in jupyter notebooks 
 
 
+Note that we observed outliers in the analysis for this particular example
+
+
